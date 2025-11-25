@@ -1,0 +1,34 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id         String      @id @default(cuid())
+  email      String      @unique
+  password   String      // hashed
+  createdAt  DateTime    @default(now())
+  purchases  Purchase[]
+}
+
+model Purchase {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+
+  sku          String
+  title        String?
+  paidPrice    Float
+  purchaseDate DateTime
+  // this flag controls whether we SHOULD watch it at all
+  // "Active watching" will be: watched && (purchaseDate + 30 days >= now)
+  watched      Boolean  @default(true)
+
+  lastPrice    Float?
+  lastChecked  DateTime?
+  createdAt    DateTime @default(now())
+}
