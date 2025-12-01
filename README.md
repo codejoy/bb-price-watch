@@ -2,6 +2,10 @@
 
 Track Best Buy purchases and get notified when prices drop within the return / price-match window.
 
+<img width="1463" height="920" alt="bbpricewatch1" src="https://github.com/user-attachments/assets/cfb5ed4f-3368-4527-ac9f-c11f9e2d79fd" />
+<img width="1152" height="648" alt="bbpricewatch2" src="https://github.com/user-attachments/assets/6a7e74e5-960f-46b1-b218-0071d2c44ce6" />
+
+
 ## Features
 
 - Add purchases with SKU, title, price, and purchase date  
@@ -33,5 +37,3 @@ npm run dev
 
 
 
-<img width="1463" height="920" alt="bbpricewatch1" src="https://github.com/user-attachments/assets/cfb5ed4f-3368-4527-ac9f-c11f9e2d79fd" />
-<img width="1152" height="648" alt="bbpricewatch2" src="https://github.com/user-attachments/assets/6a7e74e5-960f-46b1-b218-0071d2c44ce6" />
