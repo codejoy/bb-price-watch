@@ -1,7 +1,10 @@
+// This directive marks the file as a Next.js Client Component,
+// allowing use of hooks like useState and useEffect.
 "use client";
 
 import * as React from "react";
 
+// Shape of a purchase as used by the UI
 type PurchaseView = {
   id: string;
   sku: string;
@@ -11,15 +14,17 @@ type PurchaseView = {
   watched: boolean;
   lastPrice: number | null;
   lastChecked: string | null;
-  isWatchedNow: boolean;
-  expiresAt: string;
-  daysLeft: number;
+  isWatchedNow: boolean; // derived: currently within watch window?
+  expiresAt: string;     // ISO string for when watch window expires
+  daysLeft: number;      // days remaining in watch window
 };
 
+// Props passed from the server/page to this client component
 type Props = {
   initialPurchases: PurchaseView[];
 };
 
+// Shape of a single price-check result row
 type PriceCheckResult = {
   id: string;
   sku: string;
@@ -30,22 +35,34 @@ type PriceCheckResult = {
 };
 
 export default function PurchasesClient({ initialPurchases }: Props) {
+  // All purchases currently shown in the UI
   const [purchases, setPurchases] = React.useState<PurchaseView[]>(initialPurchases);
+
+  // Form states for adding a purchase
   const [sku, setSku] = React.useState("");
   const [title, setTitle] = React.useState("");
   const [paidPrice, setPaidPrice] = React.useState("");
   const [purchaseDate, setPurchaseDate] = React.useState("");
   const [watched, setWatched] = React.useState(true);
+
+  // Generic error for the add form
   const [error, setError] = React.useState<string | null>(null);
-  const [saving, setSaving] = React.useState(false);
-  const [lookupLoading, setLookupLoading] = React.useState(false);
-  const [checkingPrices, setCheckingPrices] = React.useState(false);
+
+  // Flags for various async operations
+  const [saving, setSaving] = React.useState(false);              // add purchase
+  const [lookupLoading, setLookupLoading] = React.useState(false); // Best Buy SKU lookup
+  const [checkingPrices, setCheckingPrices] = React.useState(false); // bulk price check
+
+  // State for showing the results of the last price-check operation
   const [checkResults, setCheckResults] = React.useState<PriceCheckResult[] | null>(null);
   const [checkError, setCheckError] = React.useState<string | null>(null);
   const [lastCheckedAt, setLastCheckedAt] = React.useState<string | null>(null);
+
+  // Editing state: which purchase is being edited and the values being edited
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [editValues, setEditValues] = React.useState<Partial<PurchaseView>>({});
 
+  // Reset the add form to defaults
   function resetForm() {
     setSku("");
     setTitle("");
@@ -54,10 +71,12 @@ export default function PurchasesClient({ initialPurchases }: Props) {
     setWatched(true);
   }
 
+  // Handle submit for the "Add Purchase" form
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
+    // Basic required-field validation
     if (!sku || !paidPrice || !purchaseDate) {
       setError("SKU, paid price, and purchase date are required.");
       return;
@@ -65,6 +84,7 @@ export default function PurchasesClient({ initialPurchases }: Props) {
 
     setSaving(true);
     try {
+      // Call the POST /api/purchases endpoint to create a purchase
       const res = await fetch("/api/purchases", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -78,14 +98,20 @@ export default function PurchasesClient({ initialPurchases }: Props) {
       });
 
       if (!res.ok) {
+        // Try to parse error JSON, or fall back to a generic message
         const data = await res.json().catch(() => ({}));
         setError(data.error ?? "Failed to add purchase.");
         setSaving(false);
         return;
       }
 
+      // Response includes the new purchase object
       const data = (await res.json()) as { purchase: PurchaseView };
+
+      // Prepend the new purchase to the list
       setPurchases((prev) => [data.purchase, ...prev]);
+
+      // Reset form after successful add
       resetForm();
       setSaving(false);
     } catch (err) {
@@ -95,120 +121,132 @@ export default function PurchasesClient({ initialPurchases }: Props) {
     }
   }
 
+  // Begin editing a specific purchase: populate editValues
   function startEdit(p: PurchaseView) {
     setEditingId(p.id);
     setEditValues({
       ...p,
-      purchaseDate: p.purchaseDate.slice(0, 10), // yyyy-mm-dd
+      // Convert ISO date string into yyyy-mm-dd for <input type="date" />
+      purchaseDate: p.purchaseDate.slice(0, 10),
     });
   }
 
+  // Cancel editing: clear editingId and reset editValues
   function cancelEdit() {
     setEditingId(null);
     setEditValues({});
   }
 
+  // Look up SKU details from Best Buy via /api/bestbuy
   async function handleLookupSku() {
-  setError(null);
+    setError(null);
 
-  if (!sku.trim()) {
-    setError("Enter a SKU before using lookup.");
-    return;
-  }
-
-  setLookupLoading(true);
-  try {
-    const res = await fetch("/api/bestbuy", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sku }),
-    });
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(
-        data.error ?? "Could not find product for that SKU from Best Buy."
-      );
-      setLookupLoading(false);
+    if (!sku.trim()) {
+      setError("Enter a SKU before using lookup.");
       return;
     }
 
-    const data = await res.json();
-    const product = data.product as {
-      title: string;
-      salePrice: number | null;
-      regularPrice: number | null;
-      url?: string | null;
-    };
+    setLookupLoading(true);
+    try {
+      const res = await fetch("/api/bestbuy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sku }),
+      });
 
-    // Only overwrite title if you haven't typed one yet
-    if (!title) {
-      setTitle(product.title);
-    }
-
-    // Only overwrite price if you haven't filled it yet
-    if (!paidPrice) {
-      const price =
-        product.salePrice ?? product.regularPrice ?? null;
-      if (price != null) {
-        setPaidPrice(String(price));
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(
+          data.error ?? "Could not find product for that SKU from Best Buy."
+        );
+        setLookupLoading(false);
+        return;
       }
+
+      const data = await res.json();
+      const product = data.product as {
+        title: string;
+        salePrice: number | null;
+        regularPrice: number | null;
+        url?: string | null;
+      };
+
+      // Only overwrite title if the user hasn't entered one yet
+      if (!title) {
+        setTitle(product.title);
+      }
+
+      // Only overwrite price if the user hasn't entered it yet
+      if (!paidPrice) {
+        const price =
+          product.salePrice ?? product.regularPrice ?? null;
+        if (price != null) {
+          setPaidPrice(String(price));
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Error looking up SKU from Best Buy.");
+    } finally {
+      setLookupLoading(false);
     }
-  } catch (err) {
-    console.error(err);
-    setError("Error looking up SKU from Best Buy.");
-  } finally {
-    setLookupLoading(false);
   }
-}
 
-async function handleCheckPricesNow() {
-  setCheckError(null);
-  setCheckingPrices(true);
-  setCheckResults(null);
+  // Trigger a "check all prices now" action via /api/prices/check
+  async function handleCheckPricesNow() {
+    setCheckError(null);
+    setCheckingPrices(true);
+    setCheckResults(null);
 
-  try {
-    const res = await fetch("/api/prices/check", {
-      method: "POST",
-    });
+    try {
+      const res = await fetch("/api/prices/check", {
+        method: "POST",
+      });
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setCheckError(data.error ?? "Failed to check prices.");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setCheckError(data.error ?? "Failed to check prices.");
+        setCheckingPrices(false);
+        return;
+      }
+
+      const data = await res.json() as {
+        checkedAt: string;
+        results: PriceCheckResult[];
+        purchases: PurchaseView[];
+      };
+
+      console.log("Price check results:", data);
+
+      // Save a timestamp for the last bulk check
+      setLastCheckedAt(data.checkedAt);
+      // Store per-purchase price check results
+      setCheckResults(data.results);
+      // Replace local purchases with updated ones from the backend
+      setPurchases(data.purchases);
+    } catch (err) {
+      console.error(err);
+      setCheckError("Something went wrong while checking prices.");
+    } finally {
       setCheckingPrices(false);
-      return;
     }
-
-    const data = await res.json() as {
-      checkedAt: string;
-      results: PriceCheckResult[];
-      purchases: PurchaseView[];
-    };
-
-    console.log("Price check results:", data);
-
-    setLastCheckedAt(data.checkedAt);
-    setCheckResults(data.results);
-    setPurchases(data.purchases);
-  } catch (err) {
-    console.error(err);
-    setCheckError("Something went wrong while checking prices.");
-  } finally {
-    setCheckingPrices(false);
   }
-}
 
+  // Save edits for a purchase
   async function handleEditSave(id: string) {
+    // Validate required fields before sending
     if (!editValues.purchaseDate || editValues.paidPrice == null) {
       alert("Purchase date and paid price are required.");
       return;
     }
 
+    // Ask for confirmation before persisting changes
     if (!window.confirm("Save changes to this purchase?")) {
       return;
     }
 
     try {
+      // PUT to /api/purchases/:id to update the purchase
       const res = await fetch(`/api/purchases/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -228,7 +266,11 @@ async function handleCheckPricesNow() {
       }
 
       const data = (await res.json()) as { purchase: PurchaseView };
+
+      // Replace the updated purchase in local state
       setPurchases((prev) => prev.map((p) => (p.id === id ? data.purchase : p)));
+
+      // Exit edit mode
       setEditingId(null);
       setEditValues({});
     } catch (err) {
@@ -237,12 +279,14 @@ async function handleCheckPricesNow() {
     }
   }
 
+  // Delete a purchase
   async function handleDelete(id: string) {
     if (!window.confirm("Are you sure you want to delete this purchase?")) {
       return;
     }
 
     try {
+      // DELETE /api/purchases/:id
       const res = await fetch(`/api/purchases/${id}`, {
         method: "DELETE",
       });
@@ -253,6 +297,7 @@ async function handleCheckPricesNow() {
         return;
       }
 
+      // Remove from local state
       setPurchases((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
       console.error(err);
@@ -262,33 +307,41 @@ async function handleCheckPricesNow() {
 
   return (
     <main className="max-w-3xl mx-auto p-6 space-y-6">
+      {/* Header + bulk check prices button + results summary */}
       <section>
         <h1 className="text-2xl font-bold mb-2">My Purchases</h1>
         <p className="text-sm text-gray-500 mb-4">
           Add Best Buy purchases you want to track. Items are automatically
           considered &quot;watched&quot; for 30 days from the purchase date.
         </p>
-            <div className="flex items-center justify-between mb-2">
-              <button
-                type="button"
-                onClick={handleCheckPricesNow}
-                disabled={checkingPrices || purchases.length === 0}
-                className="bg-purple-600 text-white px-4 py-2 rounded text-sm font-semibold disabled:opacity-50"
-              >
-                {checkingPrices ? "Checking prices…" : "Check prices now"}
-              </button>
-              {lastCheckedAt && (
-                <span className="text-xs text-gray-500">
-                  Last checked: {new Date(lastCheckedAt).toLocaleString()}
-                </span>
-              )}
-            </div>
-            {checkError && (
-              <p className="text-xs text-red-600 mb-2">{checkError}</p>
-            )}
-           {checkResults && checkResults.length > 0 && (
+
+        {/* Price check controls */}
+        <div className="flex items-center justify-between mb-2">
+          <button
+            type="button"
+            onClick={handleCheckPricesNow}
+            disabled={checkingPrices || purchases.length === 0}
+            className="bg-purple-600 text-white px-4 py-2 rounded text-sm font-semibold disabled:opacity-50"
+          >
+            {checkingPrices ? "Checking prices…" : "Check prices now"}
+          </button>
+          {lastCheckedAt && (
+            <span className="text-xs text-gray-500">
+              Last checked: {new Date(lastCheckedAt).toLocaleString()}
+            </span>
+          )}
+        </div>
+
+        {/* Error banner for price checks */}
+        {checkError && (
+          <p className="text-xs text-red-600 mb-2">{checkError}</p>
+        )}
+
+        {/* Success/info banner for price-check results */}
+        {checkResults && checkResults.length > 0 && (
           <div className="mb-4 border border-green-300 bg-green-50 rounded-lg p-4 text-sm text-green-800 shadow-sm">
             {(() => {
+              // Filter to only those entries where a real price drop exists
               const drops = checkResults.filter((r) => r.priceDrop > 0);
 
               if (drops.length === 0) {
@@ -332,10 +385,11 @@ async function handleCheckPricesNow() {
           </div>
         )}
 
-
+        {/* Add purchase form */}
         <form onSubmit={handleAdd} className="space-y-3 border rounded-lg p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-           <div>
+            {/* SKU + Lookup button */}
+            <div>
               <label className="block text-sm font-medium mb-1">SKU *</label>
               <div className="flex gap-2">
                 <input
@@ -357,6 +411,7 @@ async function handleCheckPricesNow() {
               </p>
             </div>
 
+            {/* Paid price input */}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Paid Price (USD) *
@@ -370,6 +425,7 @@ async function handleCheckPricesNow() {
               />
             </div>
 
+            {/* Title (optional/friendly name) */}
             <div>
               <label className="block text-sm font-medium mb-1">Title</label>
               <input
@@ -380,6 +436,7 @@ async function handleCheckPricesNow() {
               />
             </div>
 
+            {/* Purchase date */}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Purchase Date *
@@ -393,17 +450,20 @@ async function handleCheckPricesNow() {
             </div>
           </div>
 
+          {/* "Watch" checkbox (30-day window) */}
           <label className="inline-flex items-center gap-2 text-sm">
             <input
               type="checkbox"
               checked={watched}
               onChange={(e) => setWatched(e.target.checked)}
             />
-            Watch this purchase for price drops (auto-off after 30 days)   
+            Watch this purchase for price drops (auto-off after 30 days)
           </label>
 
+          {/* Form-level error display */}
           {error && <p className="text-sm text-red-600">{error}</p>}
 
+          {/* Add button */}
           <button
             type="submit"
             disabled={saving}
@@ -414,6 +474,7 @@ async function handleCheckPricesNow() {
         </form>
       </section>
 
+      {/* List of purchases + inline editing controls */}
       <section className="space-y-3">
         {purchases.length === 0 ? (
           <p className="text-sm text-gray-500">No purchases yet.</p>
@@ -425,6 +486,7 @@ async function handleCheckPricesNow() {
                 key={p.id}
                 className="border rounded-lg p-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between"
               >
+                {/* READ-ONLY VIEW MODE */}
                 {!isEditing ? (
                   <>
                     <div>
@@ -435,6 +497,7 @@ async function handleCheckPricesNow() {
                         SKU: {p.sku}
                       </div>
 
+                      {/* Quick link to Best Buy search for this SKU */}
                       <div className="text-xs">
                         <a
                           href={`https://www.bestbuy.com/site/searchpage.jsp?st=${encodeURIComponent(
@@ -447,15 +510,16 @@ async function handleCheckPricesNow() {
                           View on Best Buy
                         </a>
                       </div>
+
                       <div className="text-sm">
                         Paid: ${p.paidPrice.toFixed(2)}
                       </div>
                       <div className="text-sm">
-                        Purchase date:{" "}
+                        Purchase date{" "}
                         {new Date(p.purchaseDate).toLocaleDateString()}
                       </div>
                       <div className="text-sm">
-                        Watch status:{" "}
+                        Watch status{" "}
                         {p.isWatchedNow ? (
                           <span className="text-green-700 font-semibold">
                             Watching ({p.daysLeft} days remaining)
@@ -467,6 +531,8 @@ async function handleCheckPricesNow() {
                         )}
                       </div>
                     </div>
+
+                    {/* Action buttons for this purchase */}
                     <div className="flex gap-2 mt-2 md:mt-0">
                       <button
                         type="button"
@@ -485,9 +551,11 @@ async function handleCheckPricesNow() {
                     </div>
                   </>
                 ) : (
+                  /* EDIT MODE */
                   <>
                     <div className="space-y-2 w-full md:w-auto">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {/* SKU edit field */}
                         <div>
                           <label className="block text-xs font-medium mb-1">
                             SKU
@@ -503,6 +571,8 @@ async function handleCheckPricesNow() {
                             }
                           />
                         </div>
+
+                        {/* Paid price edit field */}
                         <div>
                           <label className="block text-xs font-medium mb-1">
                             Paid Price
@@ -522,6 +592,8 @@ async function handleCheckPricesNow() {
                             }
                           />
                         </div>
+
+                        {/* Title edit field */}
                         <div>
                           <label className="block text-xs font-medium mb-1">
                             Title
@@ -537,6 +609,8 @@ async function handleCheckPricesNow() {
                             }
                           />
                         </div>
+
+                        {/* Purchase date edit field */}
                         <div>
                           <label className="block text-xs font-medium mb-1">
                             Purchase Date
@@ -557,6 +631,8 @@ async function handleCheckPricesNow() {
                           />
                         </div>
                       </div>
+
+                      {/* Watched flag edit field */}
                       <label className="inline-flex items-center gap-2 text-xs">
                         <input
                           type="checkbox"
@@ -573,6 +649,8 @@ async function handleCheckPricesNow() {
                         Watch this purchase (auto-off after 30 days)
                       </label>
                     </div>
+
+                    {/* Save/Cancel buttons for edit */}
                     <div className="flex gap-2 mt-2 md:mt-0">
                       <button
                         type="button"
