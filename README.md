@@ -16,7 +16,8 @@ I originally hacked this together in just **a few hours**, right after buying pa
 > “I bet at least one of these parts will drop in price in the next 30 days…”
 
 Sure enough — using this tool **saved me over $100** on that build.  
-Future me is grateful. Present me is even happier. 😄
+Also turns out the this was one of the few ways I co uld write such an app.   A) Bestbuy has the price match guarantee with themselves, other reltailers dont AFAIK...
+B)  Bestbuy is one of the few companies that provides an actual API for checking the prices and such.  Kudos to them!
 
 ---
 
@@ -39,11 +40,3 @@ Future me is grateful. Present me is even happier. 😄
 
 ---
 
-## 🖼️ Screenshots
-
-Screenshots live in the `assets/` folder.  
-Add yours and reference them like:
-
-```markdown
-![Main UI](assets/screenshot1.png)
-![Price Check Output](assets/screenshot2.png)
