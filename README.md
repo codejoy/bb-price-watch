@@ -11,12 +11,14 @@ Track your Best Buy purchases and automatically get notified when prices drop wi
 
 ## Why I Built This
 
-I originally hacked this together in just **a few hours**, right after buying parts for a new PC build and thinking:
+I originally hacked this together in a few hours, right after buying parts for a new PC build and thinking:
 
 > “I bet at least one of these parts will drop in price in the next 30 days…”
 
-Sure enough — using this tool **saved me over $100** on that build.  
-Also turns out the this was one of the few ways I co uld write such an app.   A) Bestbuy has the price match guarantee with themselves, other reltailers dont AFAIK...
+Using this tool saved me 100$ on that build (some of it due to luck and timing of the finished tool being near black friday within my purchase window).
+Also turns out the this was one of the few ways I could write such an app:
+
+A) Bestbuy has the price match guarantee with themselves, other reltailers dont AFAIK...
 B)  Bestbuy is one of the few companies that provides an actual API for checking the prices and such.  Kudos to them!
 
 ---
@@ -29,7 +31,7 @@ B)  Bestbuy is one of the few companies that provides an actual API for checking
   - Paid price
   - Purchase date
 - Automatically marks items as “watched” for 30 days
-- Uses the **Best Buy Products API** to fetch real-time prices
+- Uses the Best Buy Products API to fetch real-time prices
 - Tracks:
   - `lastChecked`
   - `lastPrice`
