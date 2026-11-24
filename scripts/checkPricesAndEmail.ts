@@ -1,10 +1,22 @@
+// ESM-safe dirname so we can resolve the env file correctly
+import { fileURLToPath } from "url";
+import path from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load dotenv from project root
 import dotenv from "dotenv";
-dotenv.config({ path: ".env.local" });
+dotenv.config({
+  path: path.resolve(__dirname, "..", ".env.local"),
+});
+
+// Continue with your imports
 import nodemailer from "nodemailer";
 import { PrismaClient } from "@prisma/client";
 
 
-const WINDOW_DAYS = 30; // later you can change this to 60, or pull from env
+const WINDOW_DAYS = 30;
 
 // ------------------ Prisma setup ------------------
 
