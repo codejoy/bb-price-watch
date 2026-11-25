@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   cookieStore.set(SESSION_COOKIE, user.id, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: process.env.SECURE_COOKIES !== "false" && process.env.NODE_ENV === "production",
     maxAge: 60 * 60 * 24 * 30, // 30 days
     path: "/",
   });
