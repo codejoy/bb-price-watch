@@ -54,7 +54,7 @@ async function fetchBestBuyProductBySku(
     trimmedSku
   )}.json?apiKey=${BESTBUY_API_KEY}`;
 
-  console.log("Best Buy fetch URL (cron):", url);
+  console.log("Fetching Best Buy SKU:", trimmedSku);
 
   const res = await fetch(url);
 
