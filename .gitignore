@@ -41,3 +41,10 @@ yarn-error.log*
 next-env.d.ts
 
 /app/generated/prisma
+
+# Local databases and runtime files
+/prisma/*.db
+/prisma/*.db-*
+/cron.log
+/.env
+/.env.local

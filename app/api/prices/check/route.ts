@@ -19,7 +19,7 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function POST(_req: NextRequest) {
+export async function POST(req: NextRequest) {
   const cookieStore = await cookies();
   const userId = cookieStore.get(SESSION_COOKIE)?.value ?? null;
 
@@ -32,13 +32,19 @@ export async function POST(_req: NextRequest) {
   cutoff.setDate(now.getDate() - 30);
 
   // Get watched purchases still inside the 30-day window
+  const checkAll = req.nextUrl.searchParams.get("all") === "true";
+
   const watchedPurchases = await prisma.purchase.findMany({
     where: {
       userId,
-      watched: true,
-      purchaseDate: {
-        gte: cutoff,
-      },
+      ...(checkAll
+        ? {}
+        : {
+            watched: true,
+            purchaseDate: {
+              gte: cutoff,
+            },
+          }),
     },
   });
 
@@ -63,7 +69,10 @@ export async function POST(_req: NextRequest) {
         // still update lastChecked so we know we tried
         await prisma.purchase.update({
           where: { id: p.id },
-          data: { lastChecked: now },
+          data: {
+            lastChecked: now,
+            lastPrice: null,
+          },
         });
         results.push({
           id: p.id,
@@ -105,7 +114,10 @@ export async function POST(_req: NextRequest) {
       // just record a "no data" result
       await prisma.purchase.update({
         where: { id: p.id },
-        data: { lastChecked: now },
+        data: {
+          lastChecked: now,
+          lastPrice: null,
+        },
       });
       results.push({
         id: p.id,

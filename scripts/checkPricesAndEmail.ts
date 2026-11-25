@@ -186,11 +186,15 @@ async function checkPricesForUser(
   return drops;
 }
 
-async function sendEmail(drops: DropInfo[], checkedAt: Date) {
+async function sendEmail(
+  drops: DropInfo[],
+  checkedAt: Date,
+  userEmail: string
+) {
+
   const gmailUser = process.env.GMAIL_USER;
   const gmailPass = process.env.GMAIL_APP_PASSWORD;
-  const recipient = process.env.ALERT_RECIPIENT ?? gmailUser;
-
+  const recipient = userEmail;
   if (!gmailUser || !gmailPass) {
     console.error("GMAIL_USER or GMAIL_APP_PASSWORD not set in env.");
     return;
@@ -307,7 +311,7 @@ async function main() {
       console.log(
         `User ${user.email} has ${drops.length} item(s) with price drops.`,
       );
-      await sendEmail(drops, now);
+      await sendEmail(drops, now, user.email);
     } else {
       console.log(`No price drops for user ${user.email}.`);
     }
