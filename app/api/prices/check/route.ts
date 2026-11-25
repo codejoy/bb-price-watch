@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { SESSION_COOKIE } from "@/lib/auth";
+import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getPurchasesForUser } from "@/lib/purchases";
 import { fetchBestBuyProductBySku } from "@/lib/bestbuy";
@@ -21,7 +21,7 @@ function sleep(ms: number) {
 
 export async function POST(req: NextRequest) {
   const cookieStore = await cookies();
-  const userId = cookieStore.get(SESSION_COOKIE)?.value ?? null;
+  const userId = verifySessionToken(cookieStore.get(SESSION_COOKIE)?.value);
 
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
       if (!product) {
         // still update lastChecked so we know we tried
         await prisma.purchase.update({
-          where: { id: p.id },
+          where: { id: p.id, userId },
           data: {
             lastChecked: now,
             lastPrice: null,
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
       }
 
       await prisma.purchase.update({
-        where: { id: p.id },
+        where: { id: p.id, userId },
         data: {
           lastPrice: currentPrice,
           lastChecked: now,
@@ -109,11 +109,11 @@ export async function POST(req: NextRequest) {
         currentPrice,
         priceDrop,
       });
-    } catch (err) {
-      console.error("Price check failed for SKU", p.sku, err);
+    } catch {
+      console.error("Price check failed for SKU", p.sku);
       // just record a "no data" result
       await prisma.purchase.update({
-        where: { id: p.id },
+        where: { id: p.id, userId },
         data: {
           lastChecked: now,
           lastPrice: null,

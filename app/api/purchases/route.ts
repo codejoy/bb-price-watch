@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { SESSION_COOKIE } from "@/lib/auth";
+import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getPurchasesForUser } from "@/lib/purchases";
 
 export async function POST(req: NextRequest) {
   const cookieStore = await cookies();
-  const userId = cookieStore.get(SESSION_COOKIE)?.value ?? null;
+  const userId = verifySessionToken(cookieStore.get(SESSION_COOKIE)?.value);
 
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -34,7 +34,6 @@ export async function POST(req: NextRequest) {
   });
 
   // Re-use helper to build view form
-  const [view] = await getPurchasesForUser(userId);
   // But that returns latest-first; just recompute for this one in real app if needed.
   // For now, find the one we just created:
   const allViews = await getPurchasesForUser(userId);

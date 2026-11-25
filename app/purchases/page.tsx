@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { SESSION_COOKIE } from "@/lib/auth";
+import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
 import { getPurchasesForUser } from "@/lib/purchases";
 import PurchasesClient from "./PurchasesClient";
 
 export default async function PurchasesPage() {
   const cookieStore = await cookies();
-  const userId = cookieStore.get(SESSION_COOKIE)?.value ?? null;
+  const userId = verifySessionToken(cookieStore.get(SESSION_COOKIE)?.value);
 
   if (!userId) {
     redirect("/login");

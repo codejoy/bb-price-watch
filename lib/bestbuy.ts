@@ -1,6 +1,5 @@
 // lib/bestbuy.ts
 const BESTBUY_API_KEY = process.env.BESTBUY_API_KEY;
-console.log("BESTBUY_API_KEY loaded in Next:", BESTBUY_API_KEY ? `${BESTBUY_API_KEY.slice(0, 4)}...` : "undefined");
 
 if (!BESTBUY_API_KEY) {
   console.warn(

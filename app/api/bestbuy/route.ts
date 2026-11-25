@@ -1,20 +1,33 @@
-// app/api/bestbuy/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { fetchBestBuyProductBySku } from "@/lib/bestbuy";
+import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
+import { cookies } from "next/headers";
 
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => ({}));
-  const { sku } = body;
+  const cookieStore = await cookies();
+  const userId = verifySessionToken(
+    cookieStore.get(SESSION_COOKIE)?.value
+  );
 
-  if (!sku) {
+  if (!userId) {
     return NextResponse.json(
-      { error: "Missing sku in request body" },
+      { error: "Unauthorized" },
+      { status: 401 }
+    );
+  }
+
+  const body = await req.json().catch(() => ({}));
+  const sku = String(body?.sku ?? "").trim();
+
+  if (!/^\d{1,12}$/.test(sku)) {
+    return NextResponse.json(
+      { error: "Invalid SKU" },
       { status: 400 }
     );
   }
 
   try {
-    const product = await fetchBestBuyProductBySku(String(sku));
+    const product = await fetchBestBuyProductBySku(sku);
 
     if (!product) {
       return NextResponse.json(
@@ -35,8 +48,9 @@ export async function POST(req: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (err) {
-    console.error("Best Buy lookup failed:", err);
+  } catch {
+    console.error("Best Buy product lookup failed");
+
     return NextResponse.json(
       { error: "Best Buy lookup failed" },
       { status: 500 }
